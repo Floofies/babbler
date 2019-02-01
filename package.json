@@ -1,0 +1,29 @@
+{
+  "name": "babbler",
+  "version": "1.0.0",
+  "description": "A Telegram bot which converts JavaScript into an AST using Babel",
+  "repository": {
+    "url": "Floofies/babbler",
+    "type": "git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "dev": "supervisor -x micro-bot index.js",
+    "start": "micro-bot",
+    "now-start": "micro-bot -d ${NOW_URL}",
+    "lint": "eslint .",
+    "test": "npm run lint"
+  },
+  "engines": {
+    "node": ">=8.5.0"
+  },
+  "author": "Floofies (https://github.com/Floofies)",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/parser": "^7.3.1",
+    "micro-bot": "^2.5.3"
+  },
+  "devDependencies": {
+    "supervisor": "^0.12.0"
+  }
+}
