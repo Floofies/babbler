@@ -16,14 +16,12 @@ function monospace(str) {
 	return "<code>" + htmlEncode(str) + "</code>";
 }
 function chunkString(str, size) {
-	const numChunks = Math.ceil(str.length / size)
-	const chunks = new Array(numChunks)
-
+	const numChunks = Math.ceil(str.length / size);
+	const chunks = new Array(numChunks);
 	for (let i = 0, o = 0; i < numChunks; ++i, o += size) {
-		chunks[i] = str.substr(o, size)
+		chunks[i] = str.substr(o, size);
 	}
-
-	return chunks
+	return chunks;
 }
 function locPropRemover(path) {
 	delete path.node.start;
@@ -35,36 +33,62 @@ function addVisitor(types, visitor) {
 }
 function locRemover(babel) {
 	const visitor = {};
-	addVisitor(babel.types.DECLARATION_TYPES, visitor);
 	addVisitor(babel.types.STATEMENT_TYPES, visitor);
 	addVisitor(babel.types.EXPRESSION_TYPES, visitor);
 	addVisitor(babel.types.LITERAL_TYPES, visitor);
+	addVisitor(babel.types.SCOPABLE_TYPES, visitor);
+	visitor.ClassBody = locPropRemover;
 	visitor.DirectiveLiteral = locPropRemover;
+	visitor.Directive = locPropRemover;
 	return { visitor: visitor };
 }
-bot.start(ctx => ctx.reply("Send me JavaScript source code, and I'll give you the Babel Abstract Syntax Tree!"));
-bot.on("message", function (ctx) {
+function genAst(code) {
+	const ast = babel.transform(code, {
+		plugins: [locRemover]
+	}).ast.program;
+	delete ast.loc;
+	delete ast.start;
+	delete ast.end;
+	return ast;
+}
+async function replyCode(str, ctx) {
+	if (str.length > 4083) {
+		const chunks = chunkString(str, 4083);
+		for (const chunk of chunks) {
+			if (chunk.length === 0) continue;
+			await ctx.replyWithHTML(monospace(chunk));
+		}
+	} else {
+		ctx.replyWithHTML(monospace(str));
+	}
+}
+bot.on("message", function (ctx, next) {
 	console.log(ctx.message);
+	next(ctx);
+});
+bot.start(ctx => ctx.replyWithHTML("Send me JavaScript source code, and I'll give you the Babel Abstract Syntax Tree!\nType <code>/help</code> for a list of commands."));
+bot.command("help", function (ctx) {
+	ctx.replyWithHTML("To use this bot, just send it JavaScript source code.\nCommands:\n<code>/single &lt;expression&gt;</code> Parse a single expression.");
+});
+bot.command("single", function (ctx) {
 	try {
-		const ast = babel.transform(ctx.message.text, {
-			plugins: [locRemover]
-		}).ast.program;
-		delete ast.loc;
-		delete ast.start;
-		delete ast.end;
-		const astString = JSON.stringify(ast, null, "\t");
-		if (astString.length > 4083) {
-			const chunks = chunkString(astString, 4083);
-			console.log(chunks);
-			for (const chunk of chunks) {
-				if (chunk.length === 0) continue;
-				ctx.replyWithHTML(monospace(chunk));
-			}
+		const ast = genAst(ctx.message.text.substr(7, ctx.message.length));
+		if (ast.body.length === 0) {
+			if (ast.directives.length === 0) ctx.reply("No code was given.");
+			else replyCode(JSON.stringify(ast.directives[0], null, "\t"), ctx);
 		} else {
-			ctx.replyWithHTML(monospace(astString));
+			replyCode(JSON.stringify(ast.body[0], null, "\t"), ctx);
 		}
 	} catch (error) {
-		ctx.replyWithHTML(monospace(error.message));
+		replyCode(error.message, ctx);
+		console.error(error);
+	}
+});
+bot.on("message", function (ctx) {
+	try {
+		replyCode(JSON.stringify(genAst(ctx.message.text), null, "\t"), ctx);
+	} catch (error) {
+		replyCode(error.message, ctx);
 		console.error(error);
 	}
 });
