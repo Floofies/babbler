@@ -92,4 +92,5 @@ bot.on("message", function (ctx) {
 		console.error(error);
 	}
 });
+bot.catch(error => console.error(error));
 bot.launch();
