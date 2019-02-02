@@ -10,7 +10,6 @@
   "author": "Floofies (https://github.com/Floofies)",
   "license": "MIT",
   "dependencies": {
-    "@babel/parser": "^7.3.1",
     "babel-core": "^6.26.3",
     "telegraf": "^3.27.0"
   }
