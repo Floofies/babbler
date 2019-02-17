@@ -39,6 +39,8 @@ addVisitor(babel.types.SCOPABLE_TYPES, visitor);
 visitor.ClassBody = locPropRemover;
 visitor.DirectiveLiteral = locPropRemover;
 visitor.Directive = locPropRemover;
+visitor.TemplateLiteral = locPropRemover;
+visitor.TemplateElement = locPropRemover;
 function locRemover() {
 	return visitorWrap;
 }
@@ -72,11 +74,6 @@ async function astReply(source, ctx) {
 		console.error(error);
 	}
 }
-bot.on("message", function (ctx, next) {
-	if ("reply_to_message" in ctx.message && ctx.message.reply_to_message.from.username !== ctx.me) return;
-	console.log(ctx.message);
-	next(ctx);
-});
 bot.start(function (ctx) {
 	ctx.replyWithHTML("Send JavaScript code, get a Babel Abstract Syntax Tree.\nType <code>/help</code> for a list of commands.")
 });
@@ -100,6 +97,10 @@ bot.command("single", async function (ctx) {
 		console.error(error);
 	}
 });
-bot.on("message", ctx => astReply(ctx.message.text, ctx));
+bot.on("message", function (ctx) {
+	if (ctx.chat.type !== "private") return;
+	if ("reply_to_message" in ctx.message && ctx.message.reply_to_message.from.username !== ctx.me) return;
+	astReply(ctx.message.text, ctx);
+});
 bot.catch(error => console.error(error));
 bot.launch();
