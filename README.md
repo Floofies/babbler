@@ -7,7 +7,7 @@ To use the bot, just send JavaScript source code directly to it or use one of th
 
 - `/parse <code>` - Parses source code into a `Program` AST node. Sending source code
 - `/single <code>` - Parses a single atom of source code. (One expression, statement, etc...)
-- `/help` *(or)* `/babblerhelp` - Shows a list of commands.
+- `/help` - Shows a list of commands.
 
 ## `/parse` Command Usage or Direct Message
 
