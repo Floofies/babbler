@@ -77,6 +77,7 @@ function helpReply(ctx) {
 	ctx.replyWithHTML("Commands:\n<code>/parse &lt;code&gt;</code> Parse source code.\n<code>/single &lt;code&gt;</code> Parse a single atom of source code.");
 }
 bot.on("message", function (ctx, next) {
+	if ("reply_to_message" in ctx.message && ctx.message.reply_to_message.from.username !== "babblerjsbot") return;
 	console.log(ctx.message);
 	next(ctx);
 });
