@@ -19,9 +19,8 @@ function chunkString(str, size) {
 	}
 	return chunks;
 }
-function trimCommand(command, botName, str) {
-	if (str[command.length + 1] === "@") return str.substr(command.length + botName.length + 2, str.length);
-	return str.substr(command.length + 1, str.length);
+function trimCommand(ctx) {
+	return ctx.message.text.substr(ctx.message.entities[0].length + 1, ctx.message.text.length);
 }
 function locPropRemover(path) {
 	delete path.node.start;
@@ -73,25 +72,23 @@ async function astReply(source, ctx) {
 		console.error(error);
 	}
 }
-function helpReply(ctx) {
-	ctx.replyWithHTML("Commands:\n<code>/parse &lt;code&gt;</code> Parse source code.\n<code>/single &lt;code&gt;</code> Parse a single atom of source code.");
-}
 bot.on("message", function (ctx, next) {
 	if ("reply_to_message" in ctx.message && ctx.message.reply_to_message.from.username !== ctx.me) return;
 	console.log(ctx.message);
 	next(ctx);
 });
 bot.start(function (ctx) {
-	ctx.replyWithHTML("Send JavaScript code, get a Babel Abstract Syntax Tree.\nType <code>/help</code> or <code>/babblerhelp</code> for a list of commands.")
+	ctx.replyWithHTML("Send JavaScript code, get a Babel Abstract Syntax Tree.\nType <code>/help</code> for a list of commands.")
 });
-bot.command("help", helpReply);
-bot.command("babblerhelp", helpReply);
+bot.command("help", function (ctx) {
+	ctx.replyWithHTML("Commands:\n<code>/parse &lt;code&gt;</code> Parse source code.\n<code>/single &lt;code&gt;</code> Parse a single atom of source code.");
+});
 bot.command("parse", async function (ctx) {
-	astReply(trimCommand("parse", ctx.me, ctx.message.text), ctx);
+	astReply(trimCommand(ctx), ctx);
 });
 bot.command("single", async function (ctx) {
 	try {
-		const ast = genAst(trimCommand("single", ctx.me, ctx.message.text));
+		const ast = genAst(trimCommand(ctx));
 		if (ast.body.length === 0) {
 			if (ast.directives.length === 0) ctx.reply("No code was given.");
 			else await replyCode(JSON.stringify(ast.directives[0], null, "\t"), ctx);
