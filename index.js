@@ -19,8 +19,8 @@ function chunkString(str, size) {
 	}
 	return chunks;
 }
-function trimCommand(command, str) {
-	if (str[command.length + 1] === "@") return str.substr(command.length + 14, str.length);
+function trimCommand(command, botName, str) {
+	if (str[command.length + 1] === "@") return str.substr(command.length + botName.length + 2, str.length);
 	return str.substr(command.length + 1, str.length);
 }
 function locPropRemover(path) {
@@ -77,7 +77,7 @@ function helpReply(ctx) {
 	ctx.replyWithHTML("Commands:\n<code>/parse &lt;code&gt;</code> Parse source code.\n<code>/single &lt;code&gt;</code> Parse a single atom of source code.");
 }
 bot.on("message", function (ctx, next) {
-	if ("reply_to_message" in ctx.message && ctx.message.reply_to_message.from.username !== "babblerjsbot") return;
+	if ("reply_to_message" in ctx.message && ctx.message.reply_to_message.from.username !== ctx.me) return;
 	console.log(ctx.message);
 	next(ctx);
 });
@@ -87,11 +87,11 @@ bot.start(function (ctx) {
 bot.command("help", helpReply);
 bot.command("babblerhelp", helpReply);
 bot.command("parse", async function (ctx) {
-	astReply(trimCommand("parse", ctx.message.text), ctx);
+	astReply(trimCommand("parse", ctx.me, ctx.message.text), ctx);
 });
 bot.command("single", async function (ctx) {
 	try {
-		const ast = genAst(trimCommand("single", ctx.message.text));
+		const ast = genAst(trimCommand("single", ctx.me, ctx.message.text));
 		if (ast.body.length === 0) {
 			if (ast.directives.length === 0) ctx.reply("No code was given.");
 			else await replyCode(JSON.stringify(ast.directives[0], null, "\t"), ctx);
