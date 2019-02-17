@@ -1,10 +1,6 @@
 const babel = require("babel-core");
 const Telegraf = require("telegraf");
 const bot = new Telegraf(process.env.BOT_TOKEN);
-function spinWait(duration) {
-	const end = performance.now() + duration;
-	while (performance.now() < end);
-}
 function htmlEncode(str) {
 	return str.replace(/<|>|&/g, m => ({
 		'<': '&lt;',
@@ -31,16 +27,17 @@ function locPropRemover(path) {
 function addVisitor(types, visitor) {
 	for (const type of types) visitor[type] = locPropRemover;
 }
-function locRemover(babel) {
-	const visitor = {};
-	addVisitor(babel.types.STATEMENT_TYPES, visitor);
-	addVisitor(babel.types.EXPRESSION_TYPES, visitor);
-	addVisitor(babel.types.LITERAL_TYPES, visitor);
-	addVisitor(babel.types.SCOPABLE_TYPES, visitor);
-	visitor.ClassBody = locPropRemover;
-	visitor.DirectiveLiteral = locPropRemover;
-	visitor.Directive = locPropRemover;
-	return { visitor: visitor };
+const visitor = {};
+const visitorWrap = { visitor: visitor };
+addVisitor(babel.types.STATEMENT_TYPES, visitor);
+addVisitor(babel.types.EXPRESSION_TYPES, visitor);
+addVisitor(babel.types.LITERAL_TYPES, visitor);
+addVisitor(babel.types.SCOPABLE_TYPES, visitor);
+visitor.ClassBody = locPropRemover;
+visitor.DirectiveLiteral = locPropRemover;
+visitor.Directive = locPropRemover;
+function locRemover() {
+	return visitorWrap;
 }
 function genAst(code) {
 	const ast = babel.transform(code, {
@@ -62,35 +59,43 @@ async function replyCode(str, ctx) {
 		ctx.replyWithHTML(monospace(str));
 	}
 }
+async function astReply(source, ctx) {
+	try {
+		replyCode(JSON.stringify(genAst(source), null, "\t"), ctx);
+	} catch (error) {
+		replyCode(error.message, ctx);
+		console.error(error);
+	}
+}
+function helpReply(ctx) {
+	ctx.replyWithHTML("Commands:\n<code>/parse &lt;code&gt;</code> Parse source code.\n<code>/single &lt;code&gt;</code> Parse a single atom of source code.");
+}
 bot.on("message", function (ctx, next) {
 	console.log(ctx.message);
 	next(ctx);
 });
-bot.start(ctx => ctx.replyWithHTML("Send me JavaScript source code, and I'll give you the Babel Abstract Syntax Tree!\nType <code>/help</code> for a list of commands."));
-bot.command("help", function (ctx) {
-	ctx.replyWithHTML("To use this bot, just send it JavaScript source code.\nCommands:\n<code>/single &lt;expression&gt;</code> Parse a single expression.");
+bot.start(function (ctx) {
+	ctx.replyWithHTML("Send JavaScript code, get a Babel Abstract Syntax Tree.\nType <code>/help</code> or <code>/babblerhelp</code> for a list of commands.")
 });
-bot.command("single", function (ctx) {
+bot.command("help", helpReply);
+bot.command("babblerhelp", helpReply);
+bot.command("parse", async function (ctx) {
+	astReply(ctx.message.text.substr(6, ctx.message.length), ctx);
+});
+bot.command("single", async function (ctx) {
 	try {
 		const ast = genAst(ctx.message.text.substr(7, ctx.message.length));
 		if (ast.body.length === 0) {
 			if (ast.directives.length === 0) ctx.reply("No code was given.");
-			else replyCode(JSON.stringify(ast.directives[0], null, "\t"), ctx);
+			else await replyCode(JSON.stringify(ast.directives[0], null, "\t"), ctx);
 		} else {
-			replyCode(JSON.stringify(ast.body[0], null, "\t"), ctx);
+			await replyCode(JSON.stringify(ast.body[0], null, "\t"), ctx);
 		}
 	} catch (error) {
 		replyCode(error.message, ctx);
 		console.error(error);
 	}
 });
-bot.on("message", function (ctx) {
-	try {
-		replyCode(JSON.stringify(genAst(ctx.message.text), null, "\t"), ctx);
-	} catch (error) {
-		replyCode(error.message, ctx);
-		console.error(error);
-	}
-});
+bot.on("message", ctx => astReply(ctx.message.text, ctx));
 bot.catch(error => console.error(error));
 bot.launch();
